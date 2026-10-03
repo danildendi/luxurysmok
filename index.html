@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LuxurySmok</title><link rel="icon" type="image/png" href="logo.png"><style>
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LuxurySmok</title><link rel="icon" type="image/png" href="logo.png"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#d4af37"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="LuxurySmok"><link rel="apple-touch-icon" href="logo.png"><style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;-webkit-tap-highlight-color:transparent}
 body{background:#0f0f14;color:#f5f5f5;overflow-x:hidden}
 #login{min-height:100vh;display:flex;justify-content:center;align-items:center;background:radial-gradient(circle at top,#1a1a24,#0f0f14);padding:20px}
@@ -1018,4 +1018,12 @@ var w=window.open('','_blank');w.document.write(html);w.document.close();
 }
 
 function limpiarFiltro(){document.getElementById('filtroDesde').value='';document.getElementById('filtroHasta').value='';toast('Filtros limpiados','ok');}
-</script></body></html>
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(e){console.log('SW error',e);});
+  });
+}
+</script>
+</body></html>
