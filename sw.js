@@ -1,4 +1,4 @@
-var CACHE='luxurysmok-v2';
+var CACHE='luxurysmok-v3';
 var ARCHIVOS=['./','./index.html','./logo.png','./manifest.json'];
 
 self.addEventListener('install',function(e){
