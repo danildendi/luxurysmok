@@ -1004,7 +1004,8 @@ salHoy.slice().reverse().map(function(s){return '<tr><td>'+s.f.split(', ')[1]+'<
 '<div class="footer">Reporte generado por <b>LuxurySmok</b> © '+hoy.getFullYear()+'</div>'+
 '</div></body></html>';
 
-var blob=new Blob([html],{type:'text/html'});var url=URL.createObjectURL(blob);window.location.href=url;
+var blob=new Blob([html],{type:'text/html'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},5000);
+}
 
 function reporteHistorial(){
 if(!user)return;
@@ -1076,7 +1077,8 @@ filtrados.map(function(t){var clase=t.c>0?'entrada':'salida';var signo=t.c>0?'+'
 '<div class="footer">Reporte generado por <b>LuxurySmok</b> © '+hoy.getFullYear()+'</div>'+
 '</div></body></html>';
 
-var blob=new Blob([html],{type:'text/html'});var url=URL.createObjectURL(blob);window.location.href=url;
+var blob=new Blob([html],{type:'text/html'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},5000);
+}
 
 function limpiarFiltro(){document.getElementById('filtroDesde').value='';document.getElementById('filtroHasta').value='';toast('Filtros limpiados','ok');}
 </script>
