@@ -1,9 +1,4 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LuxurySmok</title><link rel="icon" type="image/png" href="logo.png"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#d4af37"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="LuxurySmok"><link rel="apple-touch-icon" href="logo.png">
-<!-- NUEVO: Scripts de EmailJS y Marked.js (para IA) -->
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-<style>
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LuxurySmok</title><link rel="icon" type="image/png" href="logo.png"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#d4af37"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="LuxurySmok"><link rel="apple-touch-icon" href="logo.png"><style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;-webkit-tap-highlight-color:transparent}
 body{background:#0f0f14;color:#f5f5f5;overflow-x:hidden}
 #login{min-height:100vh;display:flex;justify-content:center;align-items:center;background:radial-gradient(circle at top,#1a1a24,#0f0f14);padding:20px}
@@ -112,11 +107,6 @@ body.logueado #iaBtn{display:block}
 #syncEstado.on{display:block}
 #syncEstado.sync{background:#f59e0b;color:#000}
 #syncEstado.err{background:#ef4444;color:#fff}
-
-/* NUEVO: Estilo para el botón de olvidé contraseña */
-.forgot{display:block;text-align:center;margin-top:15px;color:#aaa;font-size:13px;cursor:pointer;text-decoration:underline;}
-.forgot:hover{color:#d4af37}
-
 @media(max-width:1024px){.main{padding:18px}table{font-size:13px}th,td{padding:8px}.cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:800px){
 .side{position:fixed;left:-100%;top:0;height:100vh;z-index:10;transition:left .3s;box-shadow:2px 0 20px rgba(0,0,0,.5);overflow-y:auto}
@@ -180,8 +170,6 @@ tbody td{font-size:12px;padding:5px 0}
 <label>Usuario</label><input id="usuario" type="text" placeholder="Tu usuario">
 <label>Contraseña</label><input id="clave" type="password" placeholder="Tu contraseña">
 <button type="submit" class="btn">🔓 Ingresar</button>
-<!-- NUEVO: Botón para recuperar contraseña -->
-<div class="forgot" onclick="recuperarPassword()">¿Olvidaste tu contraseña?</div>
 <div id="error"></div>
 </form></div>
 
@@ -203,8 +191,6 @@ tbody td{font-size:12px;padding:5px 0}
 <div class="top">
 <button id="btnMenu" onclick="toggleMenu()">☰</button>
 <h1 id="titulo">Almacén</h1>
-<!-- NUEVO: Botón de predicción IA -->
-<button class="btnReporte" onclick="predecirVentas()" style="background:linear-gradient(135deg,#3b82f6,#a855f7)">🔮 Predicción IA</button>
 <button class="btnReporte" onclick="reporteDia()" style="margin-left:auto">📄 Reporte del día</button>
 <span class="badge" id="rol">—</span>
 </div>
@@ -442,9 +428,9 @@ tbody td{font-size:12px;padding:5px 0}
 
 <button id="iaBtn" onclick="toggleIA()">🤖</button>
 <div id="iaPanel">
-<div id="iaHead"><span>🤖 Asistente LuxurySmok (IA)</span><button onclick="toggleIA()">✕</button></div>
+<div id="iaHead"><span>🤖 Asistente LuxurySmok</span><button onclick="toggleIA()">✕</button></div>
 <div id="iaBody">
-<div class="msg bot">¡Hola! Soy el asistente con IA. Pregúntame lo que quieras sobre el inventario o pídeme consejos.</div>
+<div class="msg bot">¡Hola! Soy el asistente. Pregúntame:<br>• "cuántos drag hay"<br>• "cuántos gen nano"<br>• "stock bajo"<br>• "dame un resumen"<br>• "ayuda"</div>
 </div>
 <div id="iaInput">
 <input id="iaTxt" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter')enviarIA()">
@@ -481,24 +467,10 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// ============ CONFIGURACIONES NUEVAS (PROFESOR) ============
-// ⚠️ CONFIGURA AQUÍ TU EMAILJS (Para SMTP)
-const EMAILJS_PUBLIC_KEY = "TU_PUBLIC_KEY_AQUI"; 
-const EMAILJS_SERVICE_ID = "TU_SERVICE_ID_AQUI";
-const EMAILJS_TEMPLATE_ID = "TU_TEMPLATE_ID_AQUI";
-
-// ⚠️ CONFIGURA AQUÍ TU GROQ API KEY (Para el Chatbot IA)
-const GROQ_API_KEY = "TU_GROQ_API_KEY_AQUI";
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-
-// Inicializar EmailJS
-emailjs.init(EMAILJS_PUBLIC_KEY);
-
 // ============ ESTADO GLOBAL ============
 var inv=[], proveedores=[], responsables=[], ents=[], sals=[];
 var datosListos=false;
-var USERS=[{u:'admin',p:'luxury2024',r:'admin',pin:'7777',email:'admin@luxurysmok.com'},{u:'almacen',p:'smok123',r:'almacenero',pin:'',email:'almacen@luxurysmok.com'}];
-var codigosOTP = {}; // Para guardar los OTP generados
+var USERS=[{u:'admin',p:'luxury2024',r:'admin',pin:'7777'},{u:'almacen',p:'smok123',r:'almacenero',pin:''}];
 
 var INV_DEFAULT=[
 {cat:'maquina',n:'Drag 6 Black',m:'Voopoo',mod:'Drag 6',color:'Black',st:110,min:15},
@@ -548,7 +520,7 @@ var RESP_DEFAULT=[{n:'Carlos Quispe',d:'DNI 45678912',z:'Tienda Centro',pin:'123
 var user=JSON.parse(sessionStorage.getItem('sesionActiva')||'null');
 var MAX=100,fotoActual=null,fotoActualEnt=null,fotoActualProd=null,fotoActualFactProd=null,streamA=null,streamE=null,streamP=null,streamFP=null;
 
-// ============ FUNCIONES DE FIREBASE ============
+// ============ SINCRONIZACIÓN FIREBASE ============
 function mostrarSync(tipo){
   var el=document.getElementById('syncEstado');
   el.className='on'+(tipo?' '+tipo:'');
@@ -563,6 +535,7 @@ function initFirebase(){
   ref.once('value').then(function(snap){
     var data=snap.val();
     if(!data){
+      // Primera vez: subir los datos por defecto
       console.log('Base vacía, subiendo datos iniciales...');
       return ref.set({
         inv:INV_DEFAULT,
@@ -573,6 +546,7 @@ function initFirebase(){
       });
     }
   }).then(function(){
+    // Escuchar cambios en tiempo real
     db.ref('luxurysmok/inv').on('value',function(s){inv=s.val()||[];if(user)render();});
     db.ref('luxurysmok/proveedores').on('value',function(s){proveedores=s.val()||[];if(user)render();});
     db.ref('luxurysmok/responsables').on('value',function(s){responsables=s.val()||[];if(user)render();});
@@ -698,179 +672,40 @@ document.body.appendChild(m);
 }
 
 function toggleIA(){document.getElementById('iaPanel').classList.toggle('open');}
-function addMsgIA(t,c,isHtml){var b=document.getElementById('iaBody');var d=document.createElement('div');d.className='msg '+(c||'bot');if(isHtml){d.innerHTML=t;}else{d.textContent=t;}b.appendChild(d);b.scrollTop=b.scrollHeight;}
+function addMsgIA(t,c){var b=document.getElementById('iaBody');var d=document.createElement('div');d.className='msg '+(c||'bot');d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;}
+function enviarIA(){var inp=document.getElementById('iaTxt');var txt=inp.value.trim();if(!txt)return;addMsgIA(txt,'user');inp.value='';setTimeout(function(){responderIA(txt.toLowerCase());},200);}
 
-// ============ NUEVA IA CON GROQ (PROFESOR) ============
-async function enviarIA(){
-  var inp=document.getElementById('iaTxt');
-  var txt=inp.value.trim();
-  if(!txt)return;
-  
-  addMsgIA(txt,'user');
-  inp.value='';
-  
-  // Mensaje temporal
-  var loadingId = 'loading-'+Date.now();
-  var b=document.getElementById('iaBody');
-  var ld=document.createElement('div');
-  ld.className='msg bot';
-  ld.id=loadingId;
-  ld.innerHTML='⏳ Pensando...';
-  b.appendChild(ld);
-  b.scrollTop=b.scrollHeight;
-
-  try {
-    // Contexto del inventario para la IA
-    const inventarioResumen = inv.map(p => `${p.n} (Stock: ${p.st}, Mín: ${p.min})`).join('\n');
-    const systemPrompt = `Eres el asistente inteligente del sistema de inventario "LuxurySmok" (venta de vapeadores). 
-    Tu trabajo es ayudar al administrador con datos del inventario, predicciones o consejos.
-    Aquí está el inventario actual:\n${inventarioResumen}\n\nResponde de forma concisa y profesional. Si te piden predicciones de ventas, sugiere qué productos podrían agotarse basándote en el stock mínimo.`;
-
-    const response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: "llama3-8b-8192", // Modelo rápido y gratis de Groq
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: txt }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      })
-    });
-
-    const data = await response.json();
-    document.getElementById(loadingId).remove();
-
-    if(data.choices && data.choices.length > 0) {
-      const respuesta = data.choices[0].message.content;
-      addMsgIA(marked.parse(respuesta), 'bot', true); // Renderizar Markdown
-    } else {
-      addMsgIA('Hubo un problema al procesar tu pregunta.', 'bot');
-    }
-
-  } catch (error) {
-    console.error(error);
-    if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-    addMsgIA('❌ Error de conexión con la IA. Revisa tu API KEY.', 'bot');
-  }
+function responderIA(q){
+q=q.toLowerCase().replace(/[¿?¡!.,]/g,' ');
+if(q.indexOf('hola')>=0||q.indexOf('buenas')>=0){addMsgIA('¡Hola! 👋 Pregúntame:\n• "cuántos drag hay"\n• "cuántos gen nano"\n• "stock bajo"\n• "dame un resumen"\n• "ayuda"','bot');return;}
+if(q.indexOf('ayuda')>=0){addMsgIA('📋 PUEDO RESPONDER A:\n\n📦 BUSCAR:\n• "cuántos drag"\n• "stock de gen nano"\n• "qué oxbar hay"\n\n📊 CATEGORÍAS:\n• "máquinas"\n• "semi-desechables"\n\n🚨 ALERTAS:\n• "stock bajo"\n\n📊 RESUMEN:\n• "dame un resumen"','bot');return;}
+if(q.indexOf('resumen')>=0||q.indexOf('estado')>=0){
+var tot=inv.reduce(function(s,p){return s+p.st;},0);
+var bajos=inv.filter(function(p){return p.st<=p.min;}).length;
+var maq=inv.filter(function(p){return p.cat==='maquina';}).length;
+var semi=inv.filter(function(p){return p.cat==='semi';}).length;
+var t='📊 RESUMEN:\n\n📦 Total: '+inv.length+'\n📥 Unidades: '+tot+'\n🚨 Stock bajo: '+bajos+'\n\n🔧 Máquinas: '+maq+'\n🔄 Semi-des.: '+semi;
+addMsgIA(t,'bot');return;}
+if(q.indexOf('stock bajo')>=0){var b=inv.filter(function(p){return p.st<=p.min;});if(b.length===0){addMsgIA('✅ No hay productos con stock bajo.','bot');return;}var r='🚨 STOCK BAJO:\n\n';b.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');return;}
+if(q.indexOf('maquina')>=0&&q.indexOf('cuant')<0&&q.indexOf('stock')<0){var m=inv.filter(function(p){return p.cat==='maquina';});var r='🔧 MÁQUINAS ('+m.length+'):\n\n';m.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');return;}
+if(q.indexOf('semi')>=0&&q.indexOf('cuant')<0&&q.indexOf('stock')<0){var m=inv.filter(function(p){return p.cat==='semi';});var r='🔄 SEMI-DESECHABLES ('+m.length+'):\n\n';m.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');return;}
+if(q.indexOf('responsable')>=0){var r='👥 RESPONSABLES:\n\n';responsables.forEach(function(x){r+='• '+x.n+' — '+x.z+'\n';});addMsgIA(r,'bot');return;}
+if(q.indexOf('proveedor')>=0){var r='🏢 PROVEEDORES:\n\n';proveedores.forEach(function(x){r+='• '+x.n+'\n';});addMsgIA(r,'bot');return;}
+var palabras=q.split(/\s+/).filter(function(w){return w.length>=3&&['cuantos','cuantas','cuanto','hay','tiene','stock','del','los','las','que','como','dame','lista','todos','todas'].indexOf(w)<0;});
+if(palabras.length>0){
+var encs=[];
+for(var i=0;i<inv.length;i++){
+var texto=(inv[i].n+' '+(inv[i].m||'')+' '+(inv[i].mod||'')+' '+(inv[i].s||'')).toLowerCase();
+var coincide=true;
+for(var j=0;j<palabras.length;j++){if(texto.indexOf(palabras[j])<0){coincide=false;break;}}
+if(coincide)encs.push(inv[i]);
+}
+if(encs.length===1){var p=encs[0];addMsgIA('📦 '+p.n+'\n\nStock: '+p.st+'\nMínimo: '+p.min+'\nDetalle: '+detalleProd(p),'bot');return;}
+if(encs.length>1){var r='📦 ENCONTRÉ '+encs.length+':\n\n';encs.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');return;}
+}
+addMsgIA('🤔 No entendí. Escribe "ayuda".','bot');
 }
 
-// ============ NUEVA FUNCIÓN PREDICCIÓN (PROFESOR) ============
-async function predecirVentas() {
-  if(!user) return;
-  if(!GROQ_API_KEY || GROQ_API_KEY === "TU_GROQ_API_KEY_AQUI") {
-    toast("Configura tu API Key de Groq primero", "err");
-    return;
-  }
-
-  toast("Analizando datos con IA...", "info");
-  
-  // Recopilar datos de ventas (salidas)
-  let ventasTexto = "";
-  if(sals.length === 0) {
-    ventasTexto = "No hay ventas registradas aún.";
-  } else {
-    // Agrupar por producto
-    let conteo = {};
-    sals.forEach(s => { conteo[s.p] = (conteo[s.p] || 0) + s.c; });
-    ventasTexto = Object.keys(conteo).map(k => `${k}: ${conteo[k]} unidades vendidas`).join('\n');
-  }
-
-  const inventarioTexto = inv.map(p => `${p.n}: Stock actual ${p.st} (Mínimo requerido: ${p.min})`).join('\n');
-
-  const prompt = `Actúa como un analista de datos experto en retail. 
-  Basado en estos datos de ventas históricas:
-  ${ventasTexto}
-  
-  Y este inventario actual:
-  ${inventarioTexto}
-  
-  Dame un reporte corto (máximo 3 párrafos) prediciendo qué productos se van a agotar pronto y qué recomendaciones de compra sugieres. Usa un tono profesional y directo.`;
-
-  try {
-    const response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: "llama3-8b-8192",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.5
-      })
-    });
-
-    const data = await response.json();
-    if(data.choices && data.choices.length > 0) {
-      const prediccion = data.choices[0].message.content;
-      // Mostrar en un modal
-      abrirModal('🔮 Predicción de Ventas (IA)', prediccion.replace(/\n/g, '<br>'), function(){}, false);
-      // Sobrescribir botón del modal para que solo cierre
-      document.getElementById('modalSi').textContent = 'Entendido';
-      document.getElementById('modalSi').className = 'btn-si';
-      document.getElementById('modalSi').onclick = cerrarModal;
-    }
-  } catch (error) {
-    console.error(error);
-    toast("Error al conectar con la IA", "err");
-  }
-}
-
-// ============ NUEVA FUNCIÓN RECUPERACIÓN SMTP (PROFESOR) ============
-function recuperarPassword() {
-  // Por simplicidad, pedimos el usuario. En un caso real, pediríamos el correo.
-  var usuarioInput = prompt("Ingresa tu nombre de usuario para recuperar la contraseña:");
-  if(!usuarioInput) return;
-
-  var usuarioEncontrado = USERS.find(u => u.u === usuarioInput);
-  
-  if(!usuarioEncontrado) {
-    toast("Usuario no encontrado", "err");
-    return;
-  }
-
-  // Generar OTP
-  var otp = Math.floor(100000 + Math.random() * 900000).toString();
-  codigosOTP[usuarioInput] = otp;
-
-  toast("Enviando correo...", "info");
-
-  // Enviar con EmailJS
-  var templateParams = {
-    to_email: usuarioEncontrado.email,
-    otp_code: otp,
-    user_name: usuarioInput
-  };
-
-  emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
-    .then(function(response) {
-       console.log('SUCCESS!', response.status, response.text);
-       toast("¡Correo enviado! Revisa tu bandeja.", "ok");
-       
-       // Simular verificación (El profe querrá ver que funciona)
-       setTimeout(() => {
-         var codigoIngresado = prompt(`(SIMULACIÓN) Hemos enviado un código a ${usuarioEncontrado.email}. Ingrésalo aquí:`);
-         if(codigoIngresado === codigosOTP[usuarioInput]) {
-           alert(`✅ Código correcto.\n\nTu contraseña es: ${usuarioEncontrado.p}`);
-           delete codigosOTP[usuarioInput];
-         } else {
-           alert("❌ Código incorrecto.");
-         }
-       }, 2000);
-
-    }, function(error) {
-       console.log('FAILED...', error);
-       toast("Error al enviar el correo. Revisa EmailJS.", "err");
-    });
-}
-
-// ============ RESTO DE FUNCIONES ORIGINALES ============
 function entrar(){
 var u=document.getElementById('usuario').value.trim();
 var p=document.getElementById('clave').value;
