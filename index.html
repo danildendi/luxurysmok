@@ -483,7 +483,7 @@ var db = firebase.database();
 // ============ ESTADO GLOBAL ============
 var inv=[], proveedores=[], responsables=[], ents=[], sals=[];
 var datosListos=false;
-var USERS=[]; // Las credenciales ahora se validan en el backend.
+var USERS=[];
 
 var INV_DEFAULT=[
 {cat:'maquina',n:'Drag 6 Black',m:'Voopoo',mod:'Drag 6',color:'Black',st:110,min:15},
@@ -530,8 +530,14 @@ var INV_DEFAULT=[
 var PROV_DEFAULT=[{n:'Distribuidora Vapex',c:'999-111-222',pin:'1111'},{n:'Import Smoke Perú',c:'contacto@importsmoke.pe',pin:'2222'}];
 var RESP_DEFAULT=[{n:'Carlos Quispe',d:'DNI 45678912',z:'Tienda Centro',pin:'1234'},{n:'Ana Torres',d:'DNI 78945612',z:'Tienda Norte',pin:'5678'},{n:'Luis Mendoza',d:'DNI 12378945',z:'Zona Sur',pin:'9012'}];
 
+// ============ CONEXIÓN CON BACKEND ============
+var API_BASE_URL = "https://luxury-smok-api.onrender.com"; // <-- URL CORREGIDA AQUÍ
+if(!sessionStorage.getItem("luxuryToken")){sessionStorage.removeItem("sesionActiva");sessionStorage.removeItem("seccionActiva");}
 var user=JSON.parse(sessionStorage.getItem('sesionActiva')||'null');
 var MAX=100,fotoActual=null,fotoActualEnt=null,fotoActualProd=null,fotoActualFactProd=null,streamA=null,streamE=null,streamP=null,streamFP=null;
+
+function apiUrl(path){ return API_BASE_URL.replace(/\/$/,'') + path; }
+function tokenActual(){ return sessionStorage.getItem('luxuryToken') || ''; }
 
 // ============ SINCRONIZACIÓN FIREBASE ============
 function mostrarSync(tipo){
@@ -548,7 +554,6 @@ function initFirebase(){
   ref.once('value').then(function(snap){
     var data=snap.val();
     if(!data){
-      // Primera vez: subir los datos por defecto
       console.log('Base vacía, subiendo datos iniciales...');
       return ref.set({
         inv:INV_DEFAULT,
@@ -559,7 +564,6 @@ function initFirebase(){
       });
     }
   }).then(function(){
-    // Escuchar cambios en tiempo real
     db.ref('luxurysmok/inv').on('value',function(s){inv=s.val()||[];if(user)render();});
     db.ref('luxurysmok/proveedores').on('value',function(s){proveedores=s.val()||[];if(user)render();});
     db.ref('luxurysmok/responsables').on('value',function(s){responsables=s.val()||[];if(user)render();});
@@ -599,7 +603,7 @@ function gr(){
   });
 }
 
-// ============ RESTO DE FUNCIONES ============
+// ============ RESTO DE FUNCIONES UI ============
 function toggleMenu(){var s=document.getElementById('side');var o=document.getElementById('overlay');s.classList.toggle('open');o.classList.toggle('on');}
 function cerrarMenu(){document.getElementById('side').classList.remove('open');document.getElementById('overlay').classList.remove('on');}
 
@@ -719,26 +723,76 @@ if(encs.length>1){var r='📦 ENCONTRÉ '+encs.length+':\n\n';encs.forEach(funct
 addMsgIA('🤔 No entendí. Escribe "ayuda".','bot');
 }
 
-function entrar(){
-var u=document.getElementById('usuario').value.trim();
-var p=document.getElementById('clave').value;
-var e=document.getElementById('error');
-e.textContent='';
-var f=null;
-for(var i=0;i<USERS.length;i++){if(USERS[i].u===u&&USERS[i].p===p){f=USERS[i];break;}}
-if(!f){e.textContent='❌ Usuario o contraseña incorrectos';return;}
-user=f;
-sessionStorage.setItem('sesionActiva',JSON.stringify(f));
-sessionStorage.setItem('seccionActiva','dash');
-document.getElementById('login').style.display='none';
-document.getElementById('app').classList.add('on');
-document.body.classList.add('logueado');
-document.getElementById('rol').textContent=f.r.toUpperCase();
-document.querySelectorAll('.soloAdmin').forEach(function(el){el.style.display=(f.r==='admin')?'flex':'none';});
-render();
-toast('Bienvenido '+f.u,'ok');
+// ============ LOGIN Y RECUPERACIÓN ============
+window.entrar = async function(){
+  var username=document.getElementById('usuario').value.trim();
+  var password=document.getElementById('clave').value;
+  var error=document.getElementById('error');
+  error.textContent='';
+  if(!username||!password){error.textContent='Ingresa usuario y contraseña.';return;}
+  try{
+    var r=await fetch(apiUrl('/auth/login'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:username,password:password})
+    });
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'Usuario o contraseña incorrectos.');
+    var f={u:d.user.username,r:d.user.role,pin:''};
+    sessionStorage.setItem('luxuryToken',d.access_token);
+    user=f;
+    sessionStorage.setItem('sesionActiva',JSON.stringify(f));
+    sessionStorage.setItem('seccionActiva','dash');
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').classList.add('on');
+    document.body.classList.add('logueado');
+    document.getElementById('rol').textContent=f.r.toUpperCase();
+    document.querySelectorAll('.soloAdmin').forEach(function(el){el.style.display=(f.r==='admin')?'flex':'none';});
+    render();
+    toast('Bienvenido '+f.u,'ok');
+  }catch(e){error.textContent=e.message||'No se pudo conectar con el servidor.';}
+};
+
+function mostrarRecuperacion(){
+  var panel=document.getElementById('recuperacion');
+  panel.style.display=panel.style.display==='none'?'block':'none';
+  var u=document.getElementById('usuario').value.trim();
+  if(u)document.getElementById('recUsuario').value=u;
 }
-function salir(){abrirModal('🚪 Cerrar sesión','¿Seguro que quieres salir?',function(){sessionStorage.removeItem('sesionActiva');sessionStorage.removeItem('seccionActiva');document.body.classList.remove('logueado');location.reload();},false);}
+async function solicitarOTP(){
+  var u=document.getElementById('recUsuario').value.trim();
+  var out=document.getElementById('recError');
+  out.textContent='';
+  if(!u){out.textContent='Escribe tu usuario.';return;}
+  try{
+    var r=await fetch(apiUrl('/auth/password-reset/request'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:u})
+    });
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'No se pudo enviar el código.');
+    out.style.color='#22c55e';out.textContent=d.message||'Si la cuenta existe, se envió un código al correo registrado.';
+  }catch(e){out.style.color='#ef4444';out.textContent=e.message||'No se pudo conectar con el servidor.';}
+}
+async function confirmarRecuperacion(){
+  var u=document.getElementById('recUsuario').value.trim();
+  var code=document.getElementById('recOTP').value.trim();
+  var password=document.getElementById('recNueva').value;
+  var out=document.getElementById('recError');
+  out.style.color='#ef4444';out.textContent='';
+  if(!u||!code||!password){out.textContent='Completa usuario, código y nueva contraseña.';return;}
+  try{
+    var r=await fetch(apiUrl('/auth/password-reset/confirm'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:u,code:code,new_password:password})
+    });
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'No se pudo cambiar la contraseña.');
+    out.style.color='#22c55e';out.textContent='Contraseña actualizada. Ya puedes iniciar sesión.';
+    document.getElementById('clave').value='';
+  }catch(e){out.textContent=e.message||'No se pudo conectar con el servidor.';}
+}
+
+function salir(){abrirModal('🚪 Cerrar sesión','¿Seguro que quieres salir?',function(){sessionStorage.removeItem('sesionActiva');sessionStorage.removeItem('seccionActiva');sessionStorage.removeItem('luxuryToken');document.body.classList.remove('logueado');location.reload();},false);}
 
 document.querySelectorAll('.side a[data-v]').forEach(function(a){
 a.onclick=function(){
@@ -757,7 +811,7 @@ render();
 window.addEventListener('DOMContentLoaded',function(){
 initFirebase();
 var s=JSON.parse(sessionStorage.getItem('sesionActiva')||'null');
-if(s){
+if(s && sessionStorage.getItem('luxuryToken')){
 user=s;
 document.getElementById('login').style.display='none';
 document.getElementById('app').classList.add('on');
@@ -1015,121 +1069,7 @@ salHoy.slice().reverse().map(function(s){return '<tr><td>'+s.f.split(', ')[1]+'<
 '</tbody></table>':'<div class="sin-datos">Sin salidas hoy</div>')+'</div></div>'+
 '<div class="firma"><div><div class="firma-line">Responsable del Almacén</div></div><div><div class="firma-line">Supervisor / Admin</div></div></div>'+
 '<div class="footer">Reporte generado por <b>LuxurySmok</b> © '+hoy.getFullYear()+'</div>'+
-'</div>
-<script>
-// ============ LUXURY SMOK: CONEXIÓN SEGURA CON BACKEND ============
-// Después de desplegar FastAPI, coloca aquí la URL HTTPS de Render.
-var API_BASE_URL = "https://TU-SERVICIO.onrender.com";
-// Evita reutilizar sesiones antiguas que se validaban solo en el navegador.
-if(!sessionStorage.getItem("luxuryToken")){sessionStorage.removeItem("sesionActiva");sessionStorage.removeItem("seccionActiva");user=null;}
-
-function apiUrl(path){ return API_BASE_URL.replace(/\/$/,'') + path; }
-function tokenActual(){ return sessionStorage.getItem('luxuryToken') || ''; }
-
-function mostrarRecuperacion(){
-  var panel=document.getElementById('recuperacion');
-  panel.style.display=panel.style.display==='none'?'block':'none';
-  var u=document.getElementById('usuario').value.trim();
-  if(u)document.getElementById('recUsuario').value=u;
-}
-async function solicitarOTP(){
-  var u=document.getElementById('recUsuario').value.trim();
-  var out=document.getElementById('recError');
-  out.textContent='';
-  if(!u){out.textContent='Escribe tu usuario.';return;}
-  try{
-    var r=await fetch(apiUrl('/auth/password-reset/request'),{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username:u})
-    });
-    var d=await r.json();
-    if(!r.ok)throw new Error(d.detail||'No se pudo enviar el código.');
-    out.style.color='#22c55e';out.textContent=d.message||'Si la cuenta existe, se envió un código al correo registrado.';
-  }catch(e){out.style.color='#ef4444';out.textContent=e.message||'No se pudo conectar con el servidor.';}
-}
-async function confirmarRecuperacion(){
-  var u=document.getElementById('recUsuario').value.trim();
-  var code=document.getElementById('recOTP').value.trim();
-  var password=document.getElementById('recNueva').value;
-  var out=document.getElementById('recError');
-  out.style.color='#ef4444';out.textContent='';
-  if(!u||!code||!password){out.textContent='Completa usuario, código y nueva contraseña.';return;}
-  try{
-    var r=await fetch(apiUrl('/auth/password-reset/confirm'),{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username:u,code:code,new_password:password})
-    });
-    var d=await r.json();
-    if(!r.ok)throw new Error(d.detail||'No se pudo cambiar la contraseña.');
-    out.style.color='#22c55e';out.textContent='Contraseña actualizada. Ya puedes iniciar sesión.';
-    document.getElementById('clave').value='';
-  }catch(e){out.textContent=e.message||'No se pudo conectar con el servidor.';}
-}
-
-// Reemplaza la validación local original: las contraseñas nunca se comprueban en el navegador.
-window.entrar = async function(){
-  var username=document.getElementById('usuario').value.trim();
-  var password=document.getElementById('clave').value;
-  var error=document.getElementById('error');
-  error.textContent='';
-  if(!username||!password){error.textContent='Ingresa usuario y contraseña.';return;}
-  try{
-    var r=await fetch(apiUrl('/auth/login'),{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username:username,password:password})
-    });
-    var d=await r.json();
-    if(!r.ok)throw new Error(d.detail||'Usuario o contraseña incorrectos.');
-    var f={u:d.user.username,r:d.user.role,pin:''};
-    sessionStorage.setItem('luxuryToken',d.access_token);
-    user=f;
-    sessionStorage.setItem('sesionActiva',JSON.stringify(f));
-    sessionStorage.setItem('seccionActiva','dash');
-    document.getElementById('login').style.display='none';
-    document.getElementById('app').classList.add('on');
-    document.body.classList.add('logueado');
-    document.getElementById('rol').textContent=f.r.toUpperCase();
-    document.querySelectorAll('.soloAdmin').forEach(function(el){el.style.display=(f.r==='admin')?'flex':'none';});
-    render();
-    toast('Bienvenido '+f.u,'ok');
-  }catch(e){error.textContent=e.message||'No se pudo conectar con el servidor.';}
-};
-
-// Chatbot conectado al backend de IA. Si no hay API configurada, el backend lo indicará.
-window.enviarIA = async function(){
-  var inp=document.getElementById('iaTxt');
-  var txt=inp.value.trim();if(!txt)return;
-  addMsgIA(txt,'user');inp.value='';
-  try{
-    var r=await fetch(apiUrl('/ai/chat'),{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+tokenActual()},
-      body:JSON.stringify({message:txt})
-    });
-    var d=await r.json();
-    if(!r.ok)throw new Error(d.detail||'No se pudo consultar la IA.');
-    addMsgIA(d.answer||'No se recibió respuesta.','bot');
-  }catch(e){addMsgIA('No pude conectar con la IA: '+(e.message||'error de conexión'),'bot');}
-};
-
-async function consultarPrediccion(){
-  try{
-    var r=await fetch(apiUrl('/analytics/forecast'),{
-      headers:{'Authorization':'Bearer '+tokenActual()}
-    });
-    var d=await r.json();
-    if(!r.ok)throw new Error(d.detail||'No se pudo calcular la predicción.');
-    var msg='📈 PREDICCIÓN DE DEMANDA (estimación basada en salidas de almacén)\\n\\n';
-    if(!d.forecast || !d.forecast.length)msg+='Aún no hay suficientes movimientos para estimar.';
-    else d.forecast.forEach(function(x){msg+='• '+x.product+' — estimado próximo período: '+x.expected_units+' unidades\\n';});
-    msg+='\\nNota: son estimaciones de demanda usando salidas registradas, no ventas monetarias.';
-    addMsgIA(msg,'bot');
-    document.getElementById('iaPanel').classList.add('open');
-  }catch(e){toast('Predicción: '+e.message,'err');}
-}
-</script>
-
-</body></html>';
+'</div></body></html>';
 
 var blob=new Blob([html],{type:'text/html'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},5000);
 }
