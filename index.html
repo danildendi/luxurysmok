@@ -531,7 +531,7 @@ var PROV_DEFAULT=[{n:'Distribuidora Vapex',c:'999-111-222',pin:'1111'},{n:'Impor
 var RESP_DEFAULT=[{n:'Carlos Quispe',d:'DNI 45678912',z:'Tienda Centro',pin:'1234'},{n:'Ana Torres',d:'DNI 78945612',z:'Tienda Norte',pin:'5678'},{n:'Luis Mendoza',d:'DNI 12378945',z:'Zona Sur',pin:'9012'}];
 
 // ============ CONEXIÓN CON BACKEND ============
-var API_BASE_URL = "https://luxury-smok-api.onrender.com"; // <-- URL CORREGIDA AQUÍ
+var API_BASE_URL = "https://luxury-smok-api.onrender.com";
 if(!sessionStorage.getItem("luxuryToken")){sessionStorage.removeItem("sesionActiva");sessionStorage.removeItem("seccionActiva");}
 var user=JSON.parse(sessionStorage.getItem('sesionActiva')||'null');
 var MAX=100,fotoActual=null,fotoActualEnt=null,fotoActualProd=null,fotoActualFactProd=null,streamA=null,streamE=null,streamP=null,streamFP=null;
@@ -746,18 +746,21 @@ function enviarIA() {
     }
   }
 
-  // 2. Si no es un comando local, se conecta a Groq
+  // 2. CONEXIÓN A GROQ (IA real)
   if(!respondidoLocal){
     addMsgIA('🤖 Consultando IA...', 'bot');
-    fetch(apiUrl('/ai/chat'), {
+    fetch("https://luxury-smok-api.onrender.com/ai/chat", {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tokenActual() },
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': 'Bearer ' + tokenActual() 
+      },
       body: JSON.stringify({ message: txt })
     })
     .then(function(res){ return res.json(); })
     .then(function(data){
       var b=document.getElementById('iaBody');
-      if(b.lastChild) b.removeChild(b.lastChild); // Borra "Consultando IA..."
+      if(b.lastChild) b.removeChild(b.lastChild);
       addMsgIA(data.answer || 'No se recibió respuesta de la IA.', 'bot');
     })
     .catch(function(err){
