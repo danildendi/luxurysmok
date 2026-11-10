@@ -690,37 +690,82 @@ document.body.appendChild(m);
 
 function toggleIA(){document.getElementById('iaPanel').classList.toggle('open');}
 function addMsgIA(t,c){var b=document.getElementById('iaBody');var d=document.createElement('div');d.className='msg '+(c||'bot');d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;}
-function enviarIA(){var inp=document.getElementById('iaTxt');var txt=inp.value.trim();if(!txt)return;addMsgIA(txt,'user');inp.value='';setTimeout(function(){responderIA(txt.toLowerCase());},200);}
 
-function responderIA(q){
-q=q.toLowerCase().replace(/[¿?¡!.,]/g,' ');
-if(q.indexOf('hola')>=0||q.indexOf('buenas')>=0){addMsgIA('¡Hola! 👋 Pregúntame:\n• "cuántos drag hay"\n• "cuántos gen nano"\n• "stock bajo"\n• "dame un resumen"\n• "ayuda"','bot');return;}
-if(q.indexOf('ayuda')>=0){addMsgIA('📋 PUEDO RESPONDER A:\n\n📦 BUSCAR:\n• "cuántos drag"\n• "stock de gen nano"\n• "qué oxbar hay"\n\n📊 CATEGORÍAS:\n• "máquinas"\n• "semi-desechables"\n\n🚨 ALERTAS:\n• "stock bajo"\n\n📊 RESUMEN:\n• "dame un resumen"','bot');return;}
-if(q.indexOf('resumen')>=0||q.indexOf('estado')>=0){
-var tot=inv.reduce(function(s,p){return s+p.st;},0);
-var bajos=inv.filter(function(p){return p.st<=p.min;}).length;
-var maq=inv.filter(function(p){return p.cat==='maquina';}).length;
-var semi=inv.filter(function(p){return p.cat==='semi';}).length;
-var t='📊 RESUMEN:\n\n📦 Total: '+inv.length+'\n📥 Unidades: '+tot+'\n🚨 Stock bajo: '+bajos+'\n\n🔧 Máquinas: '+maq+'\n🔄 Semi-des.: '+semi;
-addMsgIA(t,'bot');return;}
-if(q.indexOf('stock bajo')>=0){var b=inv.filter(function(p){return p.st<=p.min;});if(b.length===0){addMsgIA('✅ No hay productos con stock bajo.','bot');return;}var r='🚨 STOCK BAJO:\n\n';b.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');return;}
-if(q.indexOf('maquina')>=0&&q.indexOf('cuant')<0&&q.indexOf('stock')<0){var m=inv.filter(function(p){return p.cat==='maquina';});var r='🔧 MÁQUINAS ('+m.length+'):\n\n';m.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');return;}
-if(q.indexOf('semi')>=0&&q.indexOf('cuant')<0&&q.indexOf('stock')<0){var m=inv.filter(function(p){return p.cat==='semi';});var r='🔄 SEMI-DESECHABLES ('+m.length+'):\n\n';m.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');return;}
-if(q.indexOf('responsable')>=0){var r='👥 RESPONSABLES:\n\n';responsables.forEach(function(x){r+='• '+x.n+' — '+x.z+'\n';});addMsgIA(r,'bot');return;}
-if(q.indexOf('proveedor')>=0){var r='🏢 PROVEEDORES:\n\n';proveedores.forEach(function(x){r+='• '+x.n+'\n';});addMsgIA(r,'bot');return;}
-var palabras=q.split(/\s+/).filter(function(w){return w.length>=3&&['cuantos','cuantas','cuanto','hay','tiene','stock','del','los','las','que','como','dame','lista','todos','todas'].indexOf(w)<0;});
-if(palabras.length>0){
-var encs=[];
-for(var i=0;i<inv.length;i++){
-var texto=(inv[i].n+' '+(inv[i].m||'')+' '+(inv[i].mod||'')+' '+(inv[i].s||'')).toLowerCase();
-var coincide=true;
-for(var j=0;j<palabras.length;j++){if(texto.indexOf(palabras[j])<0){coincide=false;break;}}
-if(coincide)encs.push(inv[i]);
-}
-if(encs.length===1){var p=encs[0];addMsgIA('📦 '+p.n+'\n\nStock: '+p.st+'\nMínimo: '+p.min+'\nDetalle: '+detalleProd(p),'bot');return;}
-if(encs.length>1){var r='📦 ENCONTRÉ '+encs.length+':\n\n';encs.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');return;}
-}
-addMsgIA('🤔 No entendí. Escribe "ayuda".','bot');
+// ============ FUNCIONES DE IA (Local + Groq) ============
+function enviarIA() {
+  var inp=document.getElementById('iaTxt');
+  var txt=inp.value.trim();
+  if(!txt)return;
+  addMsgIA(txt,'user');
+  inp.value='';
+  
+  var q = txt.toLowerCase();
+  var respondidoLocal = false;
+
+  // 1. Comandos locales (rápidos y sin internet)
+  if(q.indexOf('hola')>=0||q.indexOf('buenas')>=0){addMsgIA('¡Hola! 👋 Pregúntame:\n• "cuántos drag hay"\n• "cuántos gen nano"\n• "stock bajo"\n• "dame un resumen"\n• "ayuda"','bot');respondidoLocal=true;}
+  else if(q.indexOf('ayuda')>=0){addMsgIA('📋 PUEDO RESPONDER A:\n\n📦 BUSCAR:\n• "cuántos drag"\n• "stock de gen nano"\n• "qué oxbar hay"\n\n📊 CATEGORÍAS:\n• "máquinas"\n• "semi-desechables"\n\n🚨 ALERTAS:\n• "stock bajo"\n\n📊 RESUMEN:\n• "dame un resumen"','bot');respondidoLocal=true;}
+  else if(q.indexOf('resumen')>=0||q.indexOf('estado')>=0){
+    var tot=inv.reduce(function(s,p){return s+p.st;},0);
+    var bajos=inv.filter(function(p){return p.st<=p.min;}).length;
+    var maq=inv.filter(function(p){return p.cat==='maquina';}).length;
+    var semi=inv.filter(function(p){return p.cat==='semi';}).length;
+    var t='📊 RESUMEN:\n\n📦 Total: '+inv.length+'\n📥 Unidades: '+tot+'\n🚨 Stock bajo: '+bajos+'\n\n🔧 Máquinas: '+maq+'\n🔄 Semi-des.: '+semi;
+    addMsgIA(t,'bot');respondidoLocal=true;
+  }
+  else if(q.indexOf('stock bajo')>=0){
+    var b=inv.filter(function(p){return p.st<=p.min;});
+    if(b.length===0){addMsgIA('✅ No hay productos con stock bajo.','bot');}
+    else {var r='🚨 STOCK BAJO:\n\n';b.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');}
+    respondidoLocal=true;
+  }
+  else if(q.indexOf('maquina')>=0&&q.indexOf('cuant')<0&&q.indexOf('stock')<0){
+    var m=inv.filter(function(p){return p.cat==='maquina';});var r='🔧 MÁQUINAS ('+m.length+'):\n\n';m.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');respondidoLocal=true;
+  }
+  else if(q.indexOf('semi')>=0&&q.indexOf('cuant')<0&&q.indexOf('stock')<0){
+    var m=inv.filter(function(p){return p.cat==='semi';});var r='🔄 SEMI-DESECHABLES ('+m.length+'):\n\n';m.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');respondidoLocal=true;
+  }
+  else if(q.indexOf('responsable')>=0){
+    var r='👥 RESPONSABLES:\n\n';responsables.forEach(function(x){r+='• '+x.n+' — '+x.z+'\n';});addMsgIA(r,'bot');respondidoLocal=true;
+  }
+  else if(q.indexOf('proveedor')>=0){
+    var r='🏢 PROVEEDORES:\n\n';proveedores.forEach(function(x){r+='• '+x.n+'\n';});addMsgIA(r,'bot');respondidoLocal=true;
+  }
+  else {
+    var palabras=q.replace(/[¿?¡!.,]/g,' ').split(/\s+/).filter(function(w){return w.length>=3&&['cuantos','cuantas','cuanto','hay','tiene','stock','del','los','las','que','como','dame','lista','todos','todas'].indexOf(w)<0;});
+    if(palabras.length>0){
+      var encs=[];
+      for(var i=0;i<inv.length;i++){
+        var texto=(inv[i].n+' '+(inv[i].m||'')+' '+(inv[i].mod||'')+' '+(inv[i].s||'')).toLowerCase();
+        var coincide=true;
+        for(var j=0;j<palabras.length;j++){if(texto.indexOf(palabras[j])<0){coincide=false;break;}}
+        if(coincide)encs.push(inv[i]);
+      }
+      if(encs.length===1){var p=encs[0];addMsgIA('📦 '+p.n+'\n\nStock: '+p.st+'\nMínimo: '+p.min+'\nDetalle: '+detalleProd(p),'bot');respondidoLocal=true;}
+      else if(encs.length>1){var r='📦 ENCONTRÉ '+encs.length+':\n\n';encs.forEach(function(p){r+='• '+p.n+' — '+p.st+'\n';});addMsgIA(r,'bot');respondidoLocal=true;}
+    }
+  }
+
+  // 2. Si no es un comando local, se conecta a Groq
+  if(!respondidoLocal){
+    addMsgIA('🤖 Consultando IA...', 'bot');
+    fetch(apiUrl('/ai/chat'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tokenActual() },
+      body: JSON.stringify({ message: txt })
+    })
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      var b=document.getElementById('iaBody');
+      if(b.lastChild) b.removeChild(b.lastChild); // Borra "Consultando IA..."
+      addMsgIA(data.answer || 'No se recibió respuesta de la IA.', 'bot');
+    })
+    .catch(function(err){
+      var b=document.getElementById('iaBody');
+      if(b.lastChild) b.removeChild(b.lastChild);
+      addMsgIA('❌ Error al conectar con la IA: ' + err.message, 'bot');
+    });
+  }
 }
 
 // ============ LOGIN Y RECUPERACIÓN ============
